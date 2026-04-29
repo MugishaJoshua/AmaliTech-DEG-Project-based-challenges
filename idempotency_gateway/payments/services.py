@@ -30,7 +30,7 @@ def handle_payment(idempotency_key: str, request_body: dict):
     """
 
     body_hash = hash_body(request_body)
-    existing = IdempotencyRecord.Objects.filter(
+    existing = IdempotencyRecord.objects.filter(
         idempotency_key=idempotency_key
     ) .first()
 
