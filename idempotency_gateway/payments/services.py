@@ -74,7 +74,7 @@ def handle_payment(idempotency_key: str, request_body: dict):
         # Case 2: Same key + different body — reject
         if hash_body(existing.request_body) != body_hash:
             return {
-                "error": "Idempotency key already used for a different request body"
+                "error": "Idempotency key already used for a different request body."
             }, 409, False
 
         # Case 3: Same key + same body — return cached response
