@@ -1,4 +1,6 @@
 import hashlib
+from django.utils import timezone
+from datetime import timedelta
 import json
 import time
 import threading
@@ -49,8 +51,10 @@ def handle_payment(idempotency_key: str, request_body: dict):
     lock = get_lock_for_key(idempotency_key)
 
     with lock:
+        expiry_time = timezone.now() - timedelta(hours=24)
         existing = IdempotencyRecord.objects.filter(
-            idempotency_key=idempotency_key
+            idempotency_key=idempotency_key,
+            created_at__gte=expiry_time
         ).first()
 
         # Case 1: New key — process payment
