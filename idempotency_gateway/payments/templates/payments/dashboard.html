@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Idempotency Gateway Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; padding: 40px 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    header { background: #1a1a2e; color: white; padding: 24px 32px; border-radius: 12px; margin-bottom: 24px; }
+    header h1 { font-size: 22px; font-weight: 600; }
+    header p { font-size: 13px; opacity: 0.6; margin-top: 4px; }
+    .card { background: white; border-radius: 12px; padding: 28px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .card h2 { font-size: 16px; font-weight: 600; margin-bottom: 20px; color: #1a1a2e; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 500; color: #555; margin-bottom: 6px; }
+    input { width: 100%; padding: 10px 14px; border: 1.5px solid #e0e0e0; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+    input:focus { border-color: #4f46e5; }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+    button { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 0.2s; }
+    button:hover { opacity: 0.85; }
+    .btn-primary { background: #4f46e5; color: white; }
+    .btn-secondary { background: #6b7280; color: white; }
+    .btn-danger { background: #ef4444; color: white; }
+    .response-box { display: none; margin-top: 20px; }
+    .response-box.visible { display: block; }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 12px; }
+    .status-201 { background: #d1fae5; color: #065f46; }
+    .status-400 { background: #fee2e2; color: #991b1b; }
+    .status-409 { background: #fef3c7; color: #92400e; }
+    .cache-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #dbeafe; color: #1e40af; margin-left: 8px; }
+    pre { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 16px; font-size: 13px; overflow-x: auto; line-height: 1.6; }
+    .scenarios { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+    .scenario-card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 4px solid #e0e0e0; cursor: pointer; transition: transform 0.15s; }
+    .scenario-card:hover { transform: translateY(-2px); }
+    .scenario-card.s1 { border-left-color: #4f46e5; }
+    .scenario-card.s2 { border-left-color: #10b981; }
+    .scenario-card.s3 { border-left-color: #ef4444; }
+    .scenario-card h3 { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .scenario-card p { font-size: 12px; color: #888; }
+    .loading { display: none; font-size: 13px; color: #4f46e5; margin-top: 12px; }
+    .loading.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>⚡ Idempotency Gateway</h1>
+      <p>FinSafe Transactions Ltd. — Pay-Once Protocol</p>
+    </header>
+
+    <div class="scenarios">
+      <div class="scenario-card s1" onclick="loadScenario(1)">
+        <h3>Scenario 1</h3>
+        <p>First request — new key</p>
+      </div>
+      <div class="scenario-card s2" onclick="loadScenario(2)">
+        <h3>Scenario 2</h3>
+        <p>Duplicate — same key</p>
+      </div>
+      <div class="scenario-card s3" onclick="loadScenario(3)">
+        <h3>Scenario 3</h3>
+        <p>Conflict — different body</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Send Payment Request</h2>
+      <div class="form-group">
+        <label>Idempotency Key</label>
+        <input type="text" id="idem-key" placeholder="e.g. order-abc-123" />
+      </div>
+      <div class="form-group">
+        <label>Amount</label>
+        <input type="number" id="amount" placeholder="e.g. 100" />
+      </div>
+      <div class="form-group">
+        <label>Currency</label>
+        <input type="text" id="currency" placeholder="e.g. GHS" value="GHS" />
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="sendRequest()">Send Request</button>
+        <button class="btn-secondary" onclick="generateKey()">Generate Key</button>
+        <button class="btn-danger" onclick="clearForm()">Clear</button>
+      </div>
+      <div class="loading" id="loading">⏳ Processing payment... (2s delay for new keys)</div>
+      <div class="response-box" id="response-box">
+        <div id="status-area"></div>
+        <pre id="response-body"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function generateKey() {
+      document.getElementById('idem-key').value = 'key-' + Math.random().toString(36).substr(2, 9);
+    }
+
+    function clearForm() {
+      document.getElementById('idem-key').value = '';
+      document.getElementById('amount').value = '';
+      document.getElementById('currency').value = 'GHS';
+      document.getElementById('response-box').classList.remove('visible');
+      document.getElementById('loading').classList.remove('visible');
+    }
+
+    function loadScenario(n) {
+      if (n === 1) {
+        generateKey();
+        document.getElementById('amount').value = '100';
+        document.getElementById('currency').value = 'GHS';
+      } else if (n === 2) {
+        document.getElementById('amount').value = '100';
+        document.getElementById('currency').value = 'GHS';
+      } else if (n === 3) {
+        document.getElementById('amount').value = '500';
+        document.getElementById('currency').value = 'GHS';
+      }
+    }
+
+    async function sendRequest() {
+      const key = document.getElementById('idem-key').value.trim();
+      const amount = document.getElementById('amount').value.trim();
+      const currency = document.getElementById('currency').value.trim();
+
+      if (!key || !amount || !currency) {
+        alert('Please fill in all fields.');
+        return;
+      }
+
+      document.getElementById('loading').classList.add('visible');
+      document.getElementById('response-box').classList.remove('visible');
+
+      try {
+        const res = await fetch('/process-payment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': key,
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({ amount: parseInt(amount), currency })
+        });
+
+        const data = await res.json();
+        const cacheHit = res.headers.get('X-Cache-Hit');
+
+        document.getElementById('loading').classList.remove('visible');
+
+        let statusClass = 'status-201';
+        if (res.status === 409) statusClass = 'status-409';
+        if (res.status === 400) statusClass = 'status-400';
+
+        let statusArea = `<span class="status-badge ${statusClass}">${res.status} ${res.statusText}</span>`;
+        if (cacheHit) statusArea += `<span class="cache-badge">X-Cache-Hit: true</span>`;
+
+        document.getElementById('status-area').innerHTML = statusArea;
+        document.getElementById('response-body').textContent = JSON.stringify(data, null, 2);
+        document.getElementById('response-box').classList.add('visible');
+
+      } catch (err) {
+        document.getElementById('loading').classList.remove('visible');
+        document.getElementById('response-body').textContent = 'Error: ' + err.message;
+        document.getElementById('response-box').classList.add('visible');
+      }
+    }
+
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let c of cookies) {
+          c = c.trim();
+          if (c.startsWith(name + '=')) {
+            cookieValue = decodeURIComponent(c.slice(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+  </script>
+</body>
+</html>

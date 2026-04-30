@@ -3,6 +3,19 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .services import handle_payment
 
+@api_view(['GET'])
+def home(request):
+    return Response({
+        "Name": "Idempotency Gateway",
+        "version": "1.0.0",
+        "description": "A RESTful API that ensures payment requests are processed exactly once. ",
+        "endpoint": {
+            "POST /process-payment": "Process a payment with idempotency protection"
+        },
+        "status": "Running"
+    })
+
+
 @api_view(['POST'])
 def process_payment(request):
     # Check for Idempotency_key header
@@ -37,3 +50,5 @@ def process_payment(request):
 
     return response
 
+def dashboard(request):
+    return render(request, 'payments/dashboard.html')
