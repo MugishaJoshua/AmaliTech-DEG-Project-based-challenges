@@ -188,22 +188,22 @@ python manage.py runserver
 
 Process a payment request with idempotency protection.
 
-**Headers**
+# Headers
 
 | Header | Required | Description |
 |--------|----------|-------------|
 | Content-Type | Yes | application/json |
 | Idempotency-Key | Yes | Unique string per payment attempt |
 
-**Request Body**
-```json
+Request Body
+json
 {
   "amount": 100,
   "currency": "GHS"
 }
 ```
 
-**Responses**
+Responses
 
 | Scenario | Status Code | Response |
 |----------|-------------|----------|
@@ -213,7 +213,7 @@ Process a payment request with idempotency protection.
 | Missing Idempotency-Key | 400 Bad Request | `{"error": "Idempotency-Key header is required."}` |
 | Missing amount or currency | 400 Bad Request | `{"error": "Request body must contain amount and currency."}` |
 
-**Example Request (Windows PowerShell)**
+Example Request (Windows PowerShell)
 ```powershell
 Invoke-WebRequest -Uri "http://127.0.0.1:8000/process-payment" `
   -Method POST `
@@ -221,7 +221,7 @@ Invoke-WebRequest -Uri "http://127.0.0.1:8000/process-payment" `
   -Body '{"amount": 100, "currency": "GHS"}'
 ```
 
-**Example Request (Linux/Mac)**
+Example Request (Linux/Mac)
 ```bash
 curl -X POST http://127.0.0.1:8000/process-payment \
   -H "Content-Type: application/json" \
@@ -231,7 +231,7 @@ curl -X POST http://127.0.0.1:8000/process-payment \
 
 ---
 
-## Design Decisions
+# Design Decisions
 
 **SQLite** — chosen for simplicity and zero configuration. No extra setup needed when cloning the project.
 
@@ -243,7 +243,7 @@ curl -X POST http://127.0.0.1:8000/process-payment \
 
 ---
 
-## Developer's Choice: 24hr Key Expiry
+# Developer's Choice: 24hr Key Expiry
 
 Idempotency keys automatically expire after **24 hours**. This means:
 
@@ -256,3 +256,17 @@ This was added because in a real payment system, retries only happen within a sh
 - This matches how real Fintech companies like Stripe handle idempotency
 
 This was chosen because in a real payment system, retries only happen within a short window after the original request. Keeping keys forever wastes storage and creates unnecessary risk.
+
+ Quick Start
+
+bash
+git clone https://github.com/MugishaJoshua/AmaliTech-DEG-Project-based-challenges
+cd AmaliTech-DEG-Project-based-challenges
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+cd idempotency_gateway
+python manage.py migrate
+python manage.py runserver
+```
+
