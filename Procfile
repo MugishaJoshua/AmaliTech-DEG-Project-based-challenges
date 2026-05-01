@@ -1,0 +1,1 @@
+web: gunicorn idempotency_gateway.wsgi --bind 0.0.0.0:$PORT
